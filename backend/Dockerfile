@@ -27,9 +27,10 @@ RUN mkdir -p ./data
 EXPOSE 7350 7351
 
 # Create startup script
-RUN echo '#!/bin/bash
-envsubst < nakama-config-template.yml > nakama-config.yml
-exec nakama --config nakama-config.yml' > start.sh && chmod +x start.sh
+RUN echo '#!/bin/bash' > start.sh && \
+    echo 'envsubst < nakama-config-template.yml > nakama-config.yml' >> start.sh && \
+    echo 'exec nakama --config nakama-config.yml' >> start.sh && \
+    chmod +x start.sh
 
 # Start Nakama server
 CMD ["./start.sh"]
