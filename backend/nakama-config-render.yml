@@ -31,10 +31,10 @@ socket:
 
 database:
   address:
-    - "sqlite:///data/nakama.db"
+    - "root@/app/data/nakama.db"
   conn_max_lifetime_ms: 3600000
-  max_open_conns: 100
-  max_idle_conns: 100
+  max_open_conns: 1
+  max_idle_conns: 1
 
 runtime:
   path: "./modules"
