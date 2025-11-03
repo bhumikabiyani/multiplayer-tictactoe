@@ -1,11 +1,16 @@
 {
-  "name": "tic-tac-toe-backend",
+  "name": "tictactoe-server",
   "version": "1.0.0",
-  "description": "Nakama backend for Tic-Tac-Toe multiplayer game",
+  "description": "Simple WebSocket server for multiplayer tic-tac-toe",
+  "main": "server.js",
   "scripts": {
-    "start": "~/bin/nakama --config nakama-config.yml",
-    "dev": "~/bin/nakama --config nakama-config.yml --logger.level DEBUG"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
 }
