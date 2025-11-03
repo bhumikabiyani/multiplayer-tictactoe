@@ -6,8 +6,7 @@ services:
     dockerContext: ./backend
     plan: starter
     region: oregon
-    buildCommand: ""
-    startCommand: "nakama --config nakama-config-render.yml"
+
     envVars:
       - key: DATABASE_URL
         sync: false

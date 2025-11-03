@@ -16,7 +16,7 @@ RUN curl -L "https://github.com/heroiclabs/nakama/releases/download/v3.21.1/naka
 WORKDIR /app
 
 # Copy configuration and modules
-COPY nakama-config.yml .
+COPY nakama-config-render.yml ./nakama-config.yml
 COPY modules/ ./modules/
 
 # Create data directory
