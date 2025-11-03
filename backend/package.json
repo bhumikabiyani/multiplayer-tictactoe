@@ -1,0 +1,11 @@
+{
+  "name": "tic-tac-toe-backend",
+  "version": "1.0.0",
+  "description": "Nakama backend for Tic-Tac-Toe multiplayer game",
+  "scripts": {
+    "start": "~/bin/nakama --config nakama-config.yml",
+    "dev": "~/bin/nakama --config nakama-config.yml --logger.level DEBUG"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

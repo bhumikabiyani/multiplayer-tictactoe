@@ -1,0 +1,99 @@
+name: tictactoe
+data_dir: "./data/"
+
+logger:
+  stdout: true
+  level: "INFO"
+  file: ""
+
+metrics:
+  reporting_freq_sec: 60
+  stackdriver_projectid: ""
+  prometheus_port: 0
+
+session:
+  encryption_key: "defaultencryptionkey"
+  token_expiry_sec: 7200
+
+socket:
+  server_key: "defaultkey"
+  port: 7350
+  address: "0.0.0.0"
+  protocol: "tcp"
+  max_message_size_bytes: 4096
+  read_timeout_ms: 10000
+  write_timeout_ms: 10000
+  idle_timeout_ms: 60000
+  write_wait_ms: 5000
+  pong_wait_ms: 25000
+  ping_period_ms: 15000
+  ping_backoff_threshold: 20
+
+database:
+  address:
+    - "postgres://postgres:localdb@localhost:5432/nakama?sslmode=disable"
+  conn_max_lifetime_ms: 3600000
+  max_open_conns: 100
+  max_idle_conns: 100
+
+runtime:
+  path: "./modules"
+  http_key: "defaulthttpkey"
+  read_only_globals: true
+
+match:
+  input_queue_size: 128
+  call_queue_size: 128
+  join_attempt_queue_size: 128
+  defer_message_fn: ""
+  join_marker_deadline_ms: 15000
+  max_machines: 1
+  tick_rate: 10
+  signal_shutdown_grace_sec: 15
+
+tracker:
+  event_queue_size: 1024
+
+console:
+  port: 7351
+  address: "0.0.0.0"
+  username: "admin"
+  password: "password"
+  signing_key: "defaultsigningkey"
+  token_expiry_sec: 86400
+  max_message_size_bytes: 4096
+  read_timeout_ms: 10000
+  write_timeout_ms: 10000
+  idle_timeout_ms: 60000
+
+leaderboard:
+  blacklist_rank_cache:
+    - "*"
+
+purchase:
+  validation_timeout_ms: 60000
+
+google:
+  client_id: ""
+
+gamecenter:
+  bundle_id: ""
+
+steam:
+  app_id: 0
+  publisher_key: ""
+
+facebook:
+  app_id: ""
+
+facebook_instant_game:
+  app_secret: ""
+
+apple:
+  bundle_id: ""
+
+satori:
+  url: ""
+  api_key_name: ""
+  api_key: ""
+  signing_key: ""
