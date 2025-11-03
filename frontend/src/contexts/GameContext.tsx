@@ -101,7 +101,7 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const providerId = React.useRef(Math.random().toString(36).substring(2, 8));
+  // const providerId = React.useRef(Math.random().toString(36).substring(2, 8));
   
   const [state, dispatch] = useReducer(gameReducer, initialState);
   const [ws, setWs] = React.useState<WebSocket | null>(null);
@@ -224,8 +224,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch({ type: 'UPDATE_BOARD', payload: boardWithSymbols });
             dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.game.currentPlayer === 0 ? 'X' : 'O' });
             
-            const newCurrentPlayer = data.game.currentPlayer === 0 ? 'X' : 'O';
-            const currentPlayerSymbol = playerSymbolRef.current || state.playerSymbol;
+            // const newCurrentPlayer = data.game.currentPlayer === 0 ? 'X' : 'O';
+            // const currentPlayerSymbol = playerSymbolRef.current || state.playerSymbol;
             
             if (data.game.winner) {
               if (data.game.winner === 'draw') {
