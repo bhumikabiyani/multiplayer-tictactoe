@@ -4,9 +4,8 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     region: oregon
-
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -27,5 +26,5 @@ databases:
   - name: nakama-postgres
     databaseName: nakama
     user: nakama_user
-    plan: starter
+    plan: free
     region: oregon
