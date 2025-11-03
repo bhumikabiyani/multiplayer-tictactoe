@@ -162,9 +162,9 @@ multiplayer-tictactoe/
 
 ### Production Deployment Strategy
 
-**Hybrid Deployment:**
+**Hybrid Deployment (Current Setup):**
 - **Frontend**: Vercel (static hosting)
-- **Backend**: VPS/Cloud server (DigitalOcean, Railway, etc.)
+- **Backend**: Render.com (free plan with limitations)
 
 ### Frontend Deployment (Vercel)
 
@@ -185,78 +185,70 @@ git push origin main
 
 3. **Environment Variables** (in Vercel dashboard):
 ```env
-REACT_APP_NAKAMA_HOST=your-backend-server.com
+REACT_APP_NAKAMA_HOST=your-render-app.onrender.com
 REACT_APP_NAKAMA_PORT=7350
 REACT_APP_NAKAMA_KEY=defaultkey
 REACT_APP_NAKAMA_USE_SSL=true
 ```
 
-### Backend Deployment (DigitalOcean Example)
+### Backend Deployment (Render - Current Setup)
 
-1. **Create Server Instance**
-   - Ubuntu 22.04 LTS
-   - Minimum 1GB RAM
-   - SSH key authentication
+**This project uses Render.com with the free plan for backend hosting.**
 
-2. **Server Setup**
-```bash
-# SSH into server
-ssh root@your-server-ip
+1. **Render Setup**
+   - Connect your GitHub repository to Render
+   - Create a new Web Service
+   - Set root directory to `backend`
+   - Render automatically detects Node.js and builds the project
 
-# Install dependencies
-apt update && apt upgrade -y
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-apt-get install -y nodejs postgresql postgresql-contrib
-
-# Install Nakama
-wget https://github.com/heroiclabs/nakama/releases/download/v3.18.0/nakama-3.18.0-linux-amd64.tar.gz
-tar -xzf nakama-3.18.0-linux-amd64.tar.gz
-sudo mv nakama /usr/local/bin/
-
-# Clone and setup project
-git clone https://github.com/yourusername/multiplayer-tictactoe.git
-cd multiplayer-tictactoe/backend
-npm install
-```
-
-3. **Configure as System Service**
-```bash
-# Create service file
-sudo nano /etc/systemd/system/nakama.service
-
-# Enable and start
-sudo systemctl enable nakama
-sudo systemctl start nakama
-```
-
-4. **Security Configuration**
-```bash
-# Configure firewall
-ufw allow 22    # SSH
-ufw allow 7350  # Nakama WebSocket
-ufw allow 7351  # Nakama Console
-ufw enable
-```
-
-### Automated Deployment (CI/CD)
-
-Create `.github/workflows/deploy.yml` for automatic deployments:
+2. **Render Configuration**
 ```yaml
-name: Deploy to Production
-on:
-  push:
-    branches: [ main ]
-jobs:
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Deploy to Vercel
-        uses: vercel/action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          working-directory: frontend
+# render.yaml (already configured)
+services:
+  - type: web
+    name: tic-tac-toe-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tic-tac-toe-db
+          property: connectionString
+
+databases:
+  - name: tic-tac-toe-db
+    databaseName: nakama
+    user: postgres
 ```
+
+3. **Environment Variables** (Set in Render Dashboard)
+```env
+NODE_ENV=production
+PORT=10000
+NAKAMA_HOST=0.0.0.0
+NAKAMA_PORT=7350
+DATABASE_URL=postgresql://user:pass@host:5432/nakama
+```
+
+4. **Free Plan Limitations**
+   - **Sleep after 15 minutes** of inactivity
+   - **750 hours/month** of runtime
+   - **Cold start delays** (10-30 seconds)
+   - **Shared resources** with other applications
+   - **No persistent storage** (database resets monthly)
+
+5. **Render Deployment Process**
+```bash
+# Automatic deployment on git push
+git add .
+git commit -m "Deploy to Render"
+git push origin main
+# Render automatically builds and deploys
+```
+
 
 ## ⚙️ API/Server Configuration Details
 
@@ -571,43 +563,8 @@ docker compose -f docker-compose-simple.yml down -v
 docker compose -f docker-compose-simple.yml up -d
 ```
 
-## 🚀 Potential Improvements
+## 📚 Additional Documentation
 
-### Gameplay Enhancements
-- **Game Modes**
-  - [ ] Tournament mode with brackets
-  - [ ] Ranked matchmaking with ELO rating
-  - [ ] Custom board sizes (4x4, 5x5)
-  - [ ] Time-limited moves with countdown timer
-  - [ ] Best-of-3 match series
+- **[SETUP.md](SETUP.md)** - Comprehensive setup instructions and development guide
 
-- **AI Improvements**
-  - [ ] Multiple difficulty levels (Easy, Medium, Hard)
-  - [ ] Advanced AI using minimax algorithm
-  - [ ] Machine learning-based bot training
-  - [ ] Personality-based bot behaviors
-
-### User Experience
-- **Social Features**
-  - [ ] Friend system and friend challenges
-  - [ ] Spectator mode for ongoing games
-  - [ ] Chat system during gameplay
-  - [ ] Player profiles and statistics
-  - [ ] Leaderboards and achievements
-
-### Technical Improvements
-- **Performance Optimization**
-  - [ ] Redis caching for game states
-  - [ ] CDN integration for static assets
-  - [ ] Database query optimization
-  - [ ] WebSocket connection pooling
-  - [ ] Client-side state caching
-
-### Security & Reliability
-- **Security Enhancements**
-  - [ ] Rate limiting for API endpoints
-  - [ ] Input validation and sanitization
-  - [ ] JWT token authentication
-  - [ ] HTTPS enforcement
-  - [ ] Anti-cheat mechanisms
 
