@@ -29,7 +29,12 @@ socket:
   ping_period_ms: 15000
   ping_backoff_threshold: 20
 
-# No database needed for in-memory match-based games
+database:
+  address:
+    - "root@nakama.db"
+  conn_max_lifetime_ms: 3600000
+  max_open_conns: 1
+  max_idle_conns: 1
 
 runtime:
   path: "./modules"
