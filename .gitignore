@@ -255,7 +255,6 @@ config.local.yml
 .env.production.local
 
 # Build outputs
-build/
 dist/
 out/
 
