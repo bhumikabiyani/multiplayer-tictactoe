@@ -31,7 +31,7 @@ socket:
 
 database:
   address:
-    - "${DATABASE_URL}"
+    - "sqlite:///data/nakama.db"
   conn_max_lifetime_ms: 3600000
   max_open_conns: 100
   max_idle_conns: 100

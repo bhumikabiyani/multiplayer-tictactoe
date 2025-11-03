@@ -6,10 +6,7 @@ services:
     dockerContext: ./backend
     plan: free
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nakama-postgres
-          property: connectionString
+
       - key: NAKAMA_ENCRYPTION_KEY
         generateValue: true
       - key: NAKAMA_SERVER_KEY
@@ -22,8 +19,3 @@ services:
       - key: NAKAMA_CONSOLE_PASSWORD
         generateValue: true
 
-databases:
-  - name: nakama-postgres
-    databaseName: nakama
-    user: nakama_user
-    plan: free

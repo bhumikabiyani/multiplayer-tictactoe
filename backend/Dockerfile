@@ -17,7 +17,7 @@ RUN curl -L "https://github.com/heroiclabs/nakama/releases/download/v3.21.1/naka
 WORKDIR /app
 
 # Copy configuration and modules
-COPY nakama-config-render.yml ./nakama-config-template.yml
+COPY nakama-config-render.yml ./nakama-config.yml
 COPY modules/ ./modules/
 
 # Create data directory
@@ -26,10 +26,5 @@ RUN mkdir -p ./data
 # Expose ports
 EXPOSE 7350 7351
 
-# Create startup script
-RUN echo '#!/bin/bash
-envsubst < nakama-config-template.yml > nakama-config.yml
-exec nakama --config nakama-config.yml' > start.sh && chmod +x start.sh
-
 # Start Nakama server
-CMD ["./start.sh"]
+CMD ["nakama", "--config", "nakama-config.yml"]
