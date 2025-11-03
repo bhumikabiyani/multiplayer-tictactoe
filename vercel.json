@@ -20,7 +20,7 @@
       "dest": "/index.html"
     }
   ],
-  "buildCommand": "cd frontend && npm run build",
-  "devCommand": "cd frontend && npm start",
-  "installCommand": "cd frontend && npm install"
+  "buildCommand": "npm run build",
+  "devCommand": "npm start",
+  "installCommand": "npm install"
 }
