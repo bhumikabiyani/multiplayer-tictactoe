@@ -57,7 +57,7 @@ tracker:
 console:
   port: 7351
   address: "0.0.0.0"
-  username: "${NAKAMA_CONSOLE_USERNAME}"
+  username: "admin"
   password: "${NAKAMA_CONSOLE_PASSWORD}"
   signing_key: "${NAKAMA_SIGNING_KEY}"
   token_expiry_sec: 86400

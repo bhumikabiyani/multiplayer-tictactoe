@@ -5,7 +5,6 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    region: oregon
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -17,8 +16,7 @@ services:
         generateValue: true
       - key: NAKAMA_SIGNING_KEY
         generateValue: true
-      - key: NAKAMA_CONSOLE_USERNAME
-        value: admin
+
       - key: NAKAMA_CONSOLE_PASSWORD
         generateValue: true
 
@@ -27,4 +25,3 @@ databases:
     databaseName: nakama
     user: nakama_user
     plan: free
-    region: oregon
