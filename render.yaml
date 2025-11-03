@@ -6,7 +6,6 @@ services:
     dockerContext: ./backend
     plan: free
     envVars:
-
       - key: NAKAMA_ENCRYPTION_KEY
         generateValue: true
       - key: NAKAMA_SERVER_KEY
@@ -15,7 +14,5 @@ services:
         generateValue: true
       - key: NAKAMA_SIGNING_KEY
         generateValue: true
-
       - key: NAKAMA_CONSOLE_PASSWORD
         generateValue: true
-
