@@ -7,7 +7,9 @@ services:
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: nakama-postgres
+          property: connectionString
       - key: NAKAMA_ENCRYPTION_KEY
         generateValue: true
       - key: NAKAMA_SERVER_KEY
