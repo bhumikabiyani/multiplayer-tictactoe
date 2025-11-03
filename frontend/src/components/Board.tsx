@@ -73,13 +73,18 @@ const Board: React.FC = () => {
   };
 
   const isCellDisabled = (index: number) => {
-    return (
-      state.board[index] !== null ||
+    const cellValue = state.board[index];
+    const isCellOccupied = cellValue !== null && cellValue !== '' && cellValue !== undefined;
+    
+    const disabled = (
+      isCellOccupied ||
       state.winner !== null ||
       !state.playerSymbol ||
       state.currentPlayer !== state.playerSymbol ||
       state.isWaitingForPlayer
     );
+    
+    return disabled;
   };
 
   return (

@@ -75,19 +75,26 @@ const GameStatus: React.FC = () => {
       return state.winner === state.playerSymbol ? 'You won!' : 'You lost!';
     }
 
+    // Check waiting state first, before checking turns
     if (state.isWaitingForPlayer && !state.isPlayingWithBot) {
       return 'Waiting for another player...';
     }
 
-    if (state.currentPlayer === state.playerSymbol) {
-      return 'Your turn';
+    // Only show turn info if we're not waiting and have a player symbol
+    if (state.playerSymbol && !state.isWaitingForPlayer) {
+      if (state.currentPlayer === state.playerSymbol) {
+        return 'Your turn';
+      }
+
+      if (state.isPlayingWithBot) {
+        return "Bot's turn";
+      }
+
+      return "Opponent's turn";
     }
 
-    if (state.isPlayingWithBot) {
-      return "Bot's turn";
-    }
-
-    return "Opponent's turn";
+    // Fallback for when game is starting
+    return 'Getting ready...';
   };
 
   return (

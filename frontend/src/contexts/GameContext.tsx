@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Client } from '@heroiclabs/nakama-js';
 import { getBotMove, checkWinner } from '../utils/botLogic';
 
 export interface GameState {
@@ -85,6 +84,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'SET_BOT_PLAYING':
       return { ...state, isPlayingWithBot: action.payload };
     default:
+      console.log('Unknown action type:', (action as any).type);
       return state;
   }
 }
@@ -92,7 +92,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 interface GameContextType {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
-  client: Client | null;
   makeMove: (index: number) => void;
   joinGame: () => void;
   resetGame: () => void;
@@ -102,40 +101,211 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const providerId = React.useRef(Math.random().toString(36).substring(2, 8));
+  
   const [state, dispatch] = useReducer(gameReducer, initialState);
-  const [client, setClient] = React.useState<Client | null>(null);
-  const [socket, setSocket] = React.useState<any>(null);
-  const [match, setMatch] = React.useState<any>(null);
+  const [ws, setWs] = React.useState<WebSocket | null>(null);
+  const playerIdRef = React.useRef<string | null>(null);
+  const gameModeRef = React.useRef<'multiplayer' | 'bot' | null>(null);
+  const playerSymbolRef = React.useRef<'X' | 'O' | null>(null);
+  const gameIdRef = React.useRef<string | null>(null);
 
-  useEffect(() => {
-    const host = process.env.REACT_APP_NAKAMA_HOST || "192.168.31.127";
-    const port = process.env.REACT_APP_NAKAMA_PORT || "7350";
-    const key = process.env.REACT_APP_NAKAMA_KEY || "defaultkey";
-    const useSSL = process.env.REACT_APP_NAKAMA_USE_SSL === "true";
-    
-    console.log('Connecting to Nakama:', { host, port, useSSL });
-    const nakamaClient = new Client(key, host, port, useSSL);
-    setClient(nakamaClient);
-  }, []);
-
-  const makeMove = async (index: number) => {
-    console.log('makeMove called:', { index, currentBoard: state.board, currentPlayer: state.currentPlayer, playerSymbol: state.playerSymbol, isWaiting: state.isWaitingForPlayer });
-    if ((state.board[index] && state.board[index] !== "") || state.winner || !state.playerSymbol) {
-      console.log('Move blocked - cell occupied or no player symbol');
+  const connectWebSocket = () => {
+    // Prevent duplicate connections
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected, skipping...');
       return;
     }
-    if (state.currentPlayer !== state.playerSymbol) {
-      console.log('Move blocked - not your turn');
+    
+    const host = process.env.REACT_APP_WS_HOST || "localhost";
+    const port = process.env.REACT_APP_WS_PORT || "7350";
+    const useSSL = process.env.REACT_APP_WS_USE_SSL === "true";
+    
+    const protocol = useSSL ? "wss" : "ws";
+    const wsUrl = `${protocol}://${host}${port !== "80" && port !== "443" ? `:${port}` : ""}`;
+    
+    console.log('Connecting to WebSocket:', wsUrl);
+    
+    const websocket = new WebSocket(wsUrl);
+    
+    websocket.onopen = () => {
+      console.log('WebSocket connected');
+      dispatch({ type: 'SET_CONNECTED', payload: true });
+      
+      // Auto-join game if in multiplayer mode
+      setTimeout(() => {
+        if (state.gameMode === 'multiplayer' && !state.gameId) {
+          console.log('Auto-looking for games after connection...');
+          websocket.send(JSON.stringify({ type: "list_games" }));
+        }
+      }, 500);
+    };
+    
+    websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+        
+        switch (data.type) {
+          case 'connected':
+            console.log('Server assigned player ID:', data.playerId);
+            playerIdRef.current = data.playerId;
+            dispatch({ type: 'SET_PLAYER_ID', payload: data.playerId });
+            
+            // Auto-join game if in multiplayer mode
+            if (gameModeRef.current === 'multiplayer' && !gameIdRef.current) {
+              console.log('Auto-looking for games after getting player ID...');
+              setTimeout(() => {
+                if (websocket.readyState === WebSocket.OPEN) {
+                  websocket.send(JSON.stringify({ type: "list_games" }));
+                }
+              }, 100);
+            }
+            break;
+            
+          case 'games_list':
+            console.log('Available games:', data.games);
+            if (data.games.length > 0) {
+              // Join first available game
+              console.log('Joining existing game:', data.games[0].id);
+              websocket.send(JSON.stringify({
+                type: "join_game",
+                gameId: data.games[0].id
+              }));
+            } else {
+              // No games available, create new one
+              console.log('No games available, creating new game');
+              websocket.send(JSON.stringify({ type: "create_game" }));
+            }
+            break;
+            
+          case 'game_created':
+            console.log('Game created:', data.gameId);
+            gameIdRef.current = data.gameId;
+            dispatch({ type: 'SET_GAME_ID', payload: data.gameId });
+            dispatch({ type: 'SET_WAITING', payload: true });
+            dispatch({ type: 'SET_PLAYER_SYMBOL', payload: 'X' }); // Creator is always X
+            playerSymbolRef.current = 'X';
+            // Don't set current player yet - wait for second player
+            break;
+            
+          case 'game_started':
+            console.log('Game started:', data.game);
+            console.log('My player ID (ref):', playerIdRef.current);
+            console.log('My player ID (state):', state.playerId);
+            console.log('Players in game:', data.game.players);
+            
+            // Update game ID ref for joined games
+            gameIdRef.current = data.game.id;
+            
+            dispatch({ type: 'SET_GAME_ID', payload: data.game.id });
+            dispatch({ type: 'SET_WAITING', payload: false });
+            dispatch({ type: 'UPDATE_BOARD', payload: data.game.board });
+            dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.game.currentPlayer === 0 ? 'X' : 'O' });
+            
+            // Use ref for reliable player ID
+            const currentPlayerId = playerIdRef.current || state.playerId;
+            const myPlayerIndex = data.game.players.indexOf(currentPlayerId);
+            console.log('My player index:', myPlayerIndex);
+            const mySymbol = myPlayerIndex === 0 ? 'X' : 'O';
+            console.log('Setting my symbol to:', mySymbol);
+            playerSymbolRef.current = mySymbol;
+            dispatch({ type: 'SET_PLAYER_SYMBOL', payload: mySymbol });
+            break;
+            
+          case 'move_made':
+            console.log('Move made:', data);
+            console.log('Updated board:', data.game.board);
+            console.log('Current player index:', data.game.currentPlayer);
+            console.log('My player symbol (state):', state.playerSymbol);
+            console.log('My player symbol (ref):', playerSymbolRef.current);
+            
+            const boardWithSymbols = data.game.board.map((cell: string | null) => cell || "");
+            dispatch({ type: 'UPDATE_BOARD', payload: boardWithSymbols });
+            dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.game.currentPlayer === 0 ? 'X' : 'O' });
+            
+            const newCurrentPlayer = data.game.currentPlayer === 0 ? 'X' : 'O';
+            const currentPlayerSymbol = playerSymbolRef.current || state.playerSymbol;
+            
+            if (data.game.winner) {
+              if (data.game.winner === 'draw') {
+                dispatch({ type: 'SET_WINNER', payload: 'Draw' });
+              } else {
+                dispatch({ type: 'SET_WINNER', payload: data.game.winner });
+              }
+            }
+            break;
+            
+          case 'player_disconnected':
+            console.log('Player disconnected');
+            dispatch({ type: 'SET_WAITING', payload: true });
+            break;
+            
+          case 'error':
+            console.error('Server error:', data.message);
+            break;
+            
+          default:
+            console.log('Unknown message type:', data.type);
+        }
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+      }
+    };
+    
+    websocket.onclose = () => {
+      console.log('WebSocket disconnected');
+      dispatch({ type: 'SET_CONNECTED', payload: false });
+      setWs(null);
+    };
+    
+    websocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    setWs(websocket);
+  };
+
+  const makeMove = (index: number) => {
+    console.log('makeMove called:', { 
+      index, 
+      currentBoard: state.board, 
+      currentPlayer: state.currentPlayer, 
+      playerSymbol: state.playerSymbol,
+      playerSymbolRef: playerSymbolRef.current,
+      isWaitingForPlayer: state.isWaitingForPlayer,
+      winner: state.winner
+    });
+    
+    // Use refs for validation since state might be stale
+    const currentPlayerSymbol = playerSymbolRef.current;
+    
+    if ((state.board[index] && state.board[index] !== "") || state.winner || !currentPlayerSymbol) {
+      console.log('Move blocked - cell occupied, game over, or no player symbol:', {
+        cellOccupied: state.board[index] !== "",
+        cellValue: state.board[index],
+        winner: state.winner,
+        playerSymbol: currentPlayerSymbol
+      });
+      return;
+    }
+    
+    if (state.currentPlayer !== currentPlayerSymbol) {
+      console.log('Move blocked - not your turn:', {
+        currentPlayer: state.currentPlayer,
+        playerSymbol: currentPlayerSymbol
+      });
       return;
     }
 
     if (state.isPlayingWithBot) {
-      // Local bot game logic
-      dispatch({ type: 'MAKE_MOVE', payload: { index, player: state.playerSymbol } });
+      // Local bot game logic - use ref for reliable player symbol
+      const playerSymbol = currentPlayerSymbol!;
+      dispatch({ type: 'MAKE_MOVE', payload: { index, player: playerSymbol } });
       
       // Check for winner after player move
       const newBoard = [...state.board];
-      newBoard[index] = state.playerSymbol;
+      newBoard[index] = playerSymbol;
       const winner = checkWinner(newBoard);
       
       if (winner) {
@@ -145,7 +315,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Bot's turn
       setTimeout(() => {
-        const botSymbol = state.playerSymbol === 'X' ? 'O' : 'X';
+        const botSymbol = playerSymbol === 'X' ? 'O' : 'X';
         const botMoveIndex = getBotMove(newBoard, botSymbol);
         
         dispatch({ type: 'MAKE_MOVE', payload: { index: botMoveIndex, player: botSymbol } });
@@ -158,118 +328,46 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (finalWinner) {
           dispatch({ type: 'SET_WINNER', payload: finalWinner });
         }
-      }, 500); // Small delay for better UX
+      }, 500);
       
       return;
     }
 
     // Multiplayer game logic
-    if (!socket || !match) {
-      console.log('No socket or match available');
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not connected');
       return;
     }
 
     try {
       const moveData = {
-        type: "move",
-        position: index + 1 // Lua arrays are 1-indexed
+        type: "make_move",
+        gameId: gameIdRef.current || state.gameId,
+        position: index
       };
       console.log('Sending move:', moveData);
-      await socket.sendMatchState(match.match_id, 1, JSON.stringify(moveData));
-      console.log('Move sent successfully');
+      ws.send(JSON.stringify(moveData));
     } catch (error) {
       console.error('Failed to send move:', error);
     }
   };
 
-  const joinGame = async () => {
-    if (!client) return;
+  const joinGame = () => {
+    dispatch({ type: 'SET_GAME_MODE', payload: 'multiplayer' });
+    dispatch({ type: 'SET_BOT_PLAYING', payload: false });
+    gameModeRef.current = 'multiplayer';
+    
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
+      return;
+    }
 
+    // Try to join existing game first, then create if none available
     try {
-      console.log('Starting authentication...');
-      const session = await client.authenticateDevice("device-id-" + Math.random());
-      console.log('Authenticated with session:', session.user_id);
-      dispatch({ type: 'SET_PLAYER_ID', payload: session.user_id || '' });
-      
-      const newSocket = client.createSocket();
-      await newSocket.connect(session, true);
-      setSocket(newSocket);
-      
-      // Set up socket event handlers
-      newSocket.onmatchdata = (matchData: any) => {
-        try {
-          // Convert Uint8Array to string if needed
-          const dataString = matchData.data instanceof Uint8Array 
-            ? new TextDecoder().decode(matchData.data)
-            : matchData.data;
-          const data = JSON.parse(dataString);
-        
-        switch (data.type) {
-          case 'player_joined':
-            console.log('Player joined:', data);
-            if (data.player_id === session.user_id) {
-              console.log('Setting my symbol to:', data.symbol);
-              dispatch({ type: 'SET_PLAYER_SYMBOL', payload: data.symbol });
-            }
-            if (data.players_count === 2) {
-              dispatch({ type: 'SET_WAITING', payload: false });
-            }
-            break;
-            
-          case 'game_start':
-            console.log('Game start received:', data);
-            dispatch({ type: 'SET_WAITING', payload: false });
-            dispatch({ type: 'UPDATE_BOARD', payload: data.board });
-            dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.current_player });
-            console.log('Game started, waiting set to false');
-            break;
-            
-          case 'move_made':
-            const newBoard = [...data.board];
-            dispatch({ type: 'UPDATE_BOARD', payload: newBoard });
-            dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.current_player });
-            if (data.winner) {
-              dispatch({ type: 'SET_WINNER', payload: data.winner });
-            }
-            break;
-            
-          case 'game_reset':
-            console.log('Game reset received:', data);
-            dispatch({ type: 'RESET_GAME' });
-            dispatch({ type: 'UPDATE_BOARD', payload: data.board });
-            dispatch({ type: 'SET_CURRENT_PLAYER', payload: data.current_player });
-            console.log('Game reset completed');
-            break;
-            
-          case 'player_left':
-            dispatch({ type: 'SET_WAITING', payload: true });
-            break;
-        }
-        } catch (error) {
-          console.warn('Failed to parse match data as JSON:', matchData.data, error);
-          return;
-        }
-      };
-      
-      // Join matchmaker
-      console.log('Adding to matchmaker...');
-      await newSocket.addMatchmaker("*", 2, 2);
-      console.log('Successfully added to matchmaker');
-      
-      newSocket.onmatchmakermatched = async (matched: any) => {
-        console.log('Matchmaker matched!', matched);
-        const joinedMatch = await newSocket.joinMatch(matched.match_id);
-        console.log('Joined match:', joinedMatch);
-        setMatch(joinedMatch);
-        dispatch({ type: 'SET_GAME_ID', payload: matched.match_id });
-        dispatch({ type: 'SET_WAITING', payload: false });
-        console.log('Match joined, waiting set to false');
-      };
-      
-      dispatch({ type: 'SET_CONNECTED', payload: true });
-      dispatch({ type: 'SET_WAITING', payload: true });
+      console.log('Looking for available games...');
+      ws.send(JSON.stringify({ type: "list_games" }));
     } catch (error) {
-      console.error('Failed to connect:', error);
+      console.error('Failed to list games:', error);
     }
   };
 
@@ -282,8 +380,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'RESET_GAME' });
   };
 
-  const resetGame = async () => {
+  const resetGame = () => {
     console.log('resetGame called, isPlayingWithBot:', state.isPlayingWithBot);
+    
     if (state.isPlayingWithBot) {
       // Reset local bot game
       console.log('Resetting bot game');
@@ -292,25 +391,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Reset multiplayer game
-    if (!socket || !match) {
-      console.log('No socket or match available for reset');
+    if (!ws || ws.readyState !== WebSocket.OPEN || !state.gameId) {
+      console.log('No WebSocket connection or game ID available for reset');
       return;
     }
     
     try {
       const resetData = {
-        type: "reset_game"
+        type: "create_game" // Create a new game instead of resetting
       };
-      console.log('Sending reset to server:', resetData);
-      await socket.sendMatchState(match.match_id, 1, JSON.stringify(resetData));
-      console.log('Reset sent successfully');
+      console.log('Creating new game:', resetData);
+      ws.send(JSON.stringify(resetData));
     } catch (error) {
       console.error('Failed to reset game:', error);
     }
   };
 
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <GameContext.Provider value={{ state, dispatch, client, makeMove, joinGame, resetGame, startBotGame }}>
+    <GameContext.Provider value={{ state, dispatch, makeMove, joinGame, resetGame, startBotGame }}>
       {children}
     </GameContext.Provider>
   );
