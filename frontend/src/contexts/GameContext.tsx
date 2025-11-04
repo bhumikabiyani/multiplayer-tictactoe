@@ -391,16 +391,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Reset multiplayer game
-    if (!ws || ws.readyState !== WebSocket.OPEN || !state.gameId) {
-      console.log('No WebSocket connection or game ID available for reset');
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log('No WebSocket connection available for reset');
       return;
     }
     
     try {
+      // Clear current game state
+      gameIdRef.current = null;
+      dispatch({ type: 'SET_GAME_ID', payload: '' });
+      dispatch({ type: 'RESET_GAME' });
+      dispatch({ type: 'SET_WAITING', payload: true });
+      
+      // Create a new game on the server
       const resetData = {
-        type: "create_game" // Create a new game instead of resetting
+        type: "create_game"
       };
-      console.log('Creating new game:', resetData);
+      console.log('Creating new game for reset:', resetData);
       ws.send(JSON.stringify(resetData));
     } catch (error) {
       console.error('Failed to reset game:', error);
